@@ -1,5 +1,7 @@
+from fastapi.testclient import TestClient
+
 from app.ratelimit import RateLimiter
-from tests.helpers import assign, join, open_run, tok
+from tests.helpers import assign, join, open_run, started_parking_run, submit, tok
 
 
 def test_join_and_admin_sees_participant(admin_client):
@@ -90,3 +92,20 @@ def test_rate_limiter_window():
     assert limiter.allow("other")
     now[0] = 60.0
     assert limiter.allow("ip")
+
+
+def test_participant_with_submission_cannot_be_removed(admin_client):
+    ctx = started_parking_run(admin_client)
+    run_id = ctx["run"]["id"]
+    assert submit(admin_client, ctx["tokens"]["a"], "a").status_code == 200
+    r = admin_client.delete(f"/api/runs/{run_id}/participants/{ctx['ids']['a']}")
+    assert r.status_code == 409
+
+
+def test_participant_token_does_not_grant_admin_routes(admin_client, app):
+    run = open_run(admin_client)
+    with TestClient(app) as other:
+        token = join(other, run["entry_code"], "가")["token"]
+        assert other.get(f"/api/runs/{run['id']}/state", headers=tok(token)).status_code == 401
+        assert other.get("/api/templates", headers=tok(token)).status_code == 401
+        assert other.get("/api/runs", headers=tok(token)).status_code == 401
