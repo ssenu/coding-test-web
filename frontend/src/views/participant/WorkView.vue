@@ -172,6 +172,8 @@ const download = async (file: StoredFile) => {
   }
 }
 
+let unmounted = false
+
 onMounted(async () => {
   if (!socket) {
     await router.push('/')
@@ -181,10 +183,13 @@ onMounted(async () => {
     error.value = '화면을 불러오지 못했습니다.'
     return true
   })
+  // 불러오는 중에 화면이 닫혔다면 소켓을 열지 않는다
+  if (unmounted) return
   if (ok) socket.start()
 })
 
 onBeforeUnmount(() => {
+  unmounted = true
   refreshSoon.cancel()
   sendTeamDraft.flush()
   socket?.stop()
