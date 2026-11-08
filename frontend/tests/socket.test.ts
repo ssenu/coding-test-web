@@ -74,6 +74,15 @@ describe('RunSocket', () => {
     expect(onEvent).toHaveBeenCalledWith({ event: 'box_state_changed', data: { box_id: 'a' } })
   })
 
+  it('pong 응답은 이벤트로 넘기지 않는다', () => {
+    const { socket, onEvent } = make()
+    socket.start()
+    const ws = FakeSocket.instances[0]!
+    ws.open()
+    ws.onmessage?.({ data: '{"event":"pong","data":{}}' })
+    expect(onEvent).not.toHaveBeenCalled()
+  })
+
   it('열려 있을 때만 보낸다', () => {
     const { socket } = make()
     socket.start()

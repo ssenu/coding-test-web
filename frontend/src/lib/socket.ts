@@ -88,6 +88,8 @@ export class RunSocket {
         // 형식이 맞지 않는 메시지는 무시한다
         return
       }
+      // 서버의 ping 응답은 상태 변화가 아니므로 넘기지 않는다
+      if (parsed.event === 'pong') return
       // 처리기 오류는 삼키지 않고 밖으로 드러낸다
       this.handlers.onEvent(parsed)
     }
