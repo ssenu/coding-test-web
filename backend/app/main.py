@@ -18,6 +18,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.engine = engine
     app.state.hub = Hub()
     app.state.join_limiter = RateLimiter(limit=10, window_seconds=60)
+    app.state.login_limiter = RateLimiter(limit=5, window_seconds=60)
 
     for module in (admin, templates, runs, participant, ws):
         app.include_router(module.router)

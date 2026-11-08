@@ -30,3 +30,9 @@ def test_login_logout(client):
     assert client.get("/api/admin/me").json() == {"admin": True}
     client.post("/api/admin/logout")
     assert client.get("/api/admin/me").status_code == 401
+
+
+def test_login_is_throttled(client):
+    for _ in range(5):
+        assert client.post("/api/admin/login", json={"password": "nope"}).status_code == 401
+    assert client.post("/api/admin/login", json={"password": "pw"}).status_code == 429
