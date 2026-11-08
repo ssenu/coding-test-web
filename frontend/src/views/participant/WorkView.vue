@@ -40,6 +40,10 @@ watch(selectedId, () => {
   error.value = ''
 })
 
+function leaveWaiting() {
+  if (window.confirm('나가면 다시 입장할 때 관리자 승인이 필요합니다. 나갈까요?')) leave()
+}
+
 function leave() {
   clearParticipant()
   router.push('/')
@@ -194,11 +198,13 @@ onBeforeUnmount(() => {
         <FileTabs :files="files" readonly />
       </template>
       <p v-if="!st.result || Object.keys(st.result).length === 0" class="muted">최종 제출된 코드가 없습니다.</p>
+      <button type="button" @click="leave">다른 회차 입장</button>
     </section>
 
     <section v-else-if="isWaiting(st)" class="card" role="status">
       <h2>잠시 기다려 주세요</h2>
       <p>관리자가 파트를 배정하고 회차를 시작하면 문제가 열립니다.</p>
+      <button type="button" @click="leaveWaiting">나가기</button>
     </section>
 
     <div v-else class="work-grid">

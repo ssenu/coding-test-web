@@ -82,4 +82,15 @@ describe('JoinView', () => {
     const { router } = await mountAt('/')
     expect(router.currentRoute.value.path).toBe('/run')
   })
+
+  it('끝난 회차의 토큰이면 지우고 입장 화면에 머문다', async () => {
+    localStorage.setItem('ctw.participant', JSON.stringify({ token: 't', runId: 1, participantId: 1 }))
+    vi.spyOn(participantApi, 'state').mockResolvedValue({
+      run: { id: 1, name: 'x', status: 'finished' },
+    } as ParticipantState)
+    const { wrapper, router } = await mountAt('/')
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(loadParticipant()).toBeNull()
+    expect(wrapper.find('form').exists()).toBe(true)
+  })
 })

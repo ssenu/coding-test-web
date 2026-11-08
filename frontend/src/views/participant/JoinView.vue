@@ -2,7 +2,7 @@
 // 참가자 입장: 입장 코드와 이름. 같은 이름으로 다시 들어오면 관리자 승인을 기다린다.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError, loadParticipant, participantApi, saveParticipant } from '../../lib/api'
+import { ApiError, clearParticipant, loadParticipant, participantApi, saveParticipant } from '../../lib/api'
 
 const POLL_MS = 3000
 
@@ -57,7 +57,21 @@ async function submit() {
 }
 
 onMounted(async () => {
-  if (loadParticipant() && !(await tryEnter()) && pending.value) startPolling()
+  if (!loadParticipant()) return
+  try {
+    const st = await participantApi.state()
+    // 이미 끝난 회차의 토큰이면 지우고 입장 화면에 남는다
+    if (st.run?.status === 'finished') {
+      clearParticipant()
+      return
+    }
+    await router.push('/run')
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 409) {
+      pending.value = true
+      startPolling()
+    }
+  }
 })
 onBeforeUnmount(stopPolling)
 </script>
