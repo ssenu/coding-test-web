@@ -2,7 +2,7 @@
 // 회차 진행 화면: 참가자 배정, 흐름도(박스 상태), 승인, 제출 코드 보기, 문제 수정.
 import { Background } from '@vue-flow/background'
 import { VueFlow } from '@vue-flow/core'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import BoxNode from '../../components/BoxNode.vue'
 import FileTabs from '../../components/FileTabs.vue'
@@ -123,13 +123,28 @@ const approveGate = (gate: Gate) =>
   })
 
 // ---------------------------------------------------------------- 박스 상세
-const selectBox = (boxId: string) =>
+// 제출이 있는 박스만 불러오고, 응답이 늦게 와도 지금 선택한 박스일 때만 반영한다
+const loadSubmission = (boxId: string) =>
   guard(async () => {
-    selectedBoxId.value = boxId
-    submission.value = null
-    markdownDraft.value = state.value?.graph.boxes.find((b) => b.id === boxId)?.config.markdown ?? ''
-    if (state.value?.submissions[boxId]) submission.value = await adminApi.submission(runId, boxId)
+    if (!state.value?.submissions[boxId]) return
+    const loaded = await adminApi.submission(runId, boxId)
+    if (selectedBoxId.value === boxId) submission.value = loaded
   })
+
+const selectBox = (boxId: string) => {
+  selectedBoxId.value = boxId
+  submission.value = null
+  markdownDraft.value = state.value?.graph.boxes.find((b) => b.id === boxId)?.config.markdown ?? ''
+  return loadSubmission(boxId)
+}
+
+// 실시간으로 제출이 생기거나 다시 제출되면 열려 있는 상세를 다시 불러온다
+watch(
+  () => (selectedBoxId.value ? state.value?.submissions[selectedBoxId.value]?.submitted_at : undefined),
+  () => {
+    if (selectedBoxId.value) loadSubmission(selectedBoxId.value)
+  },
+)
 
 const saveMarkdown = () =>
   guard(async () => {
