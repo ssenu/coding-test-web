@@ -24,18 +24,18 @@ def receive_until(ws, event: str, limit: int = 20) -> dict:
 
 def test_rejects_unauthenticated(admin_client):
     run = open_run(admin_client)
-    with pytest.raises(WebSocketDisconnect) as bad_token:
-        with participant_ws(admin_client, run["id"], "bad"):
-            pass
+    with participant_ws(admin_client, run["id"], "bad") as ws:
+        with pytest.raises(WebSocketDisconnect) as bad_token:
+            ws.receive_json()
     assert bad_token.value.code == 4401
-    with pytest.raises(WebSocketDisconnect) as no_run:
-        with admin_ws(admin_client, 9999):
-            pass
+    with admin_ws(admin_client, 9999) as ws:
+        with pytest.raises(WebSocketDisconnect) as no_run:
+            ws.receive_json()
     assert no_run.value.code == 4404
     admin_client.post("/api/admin/logout")
-    with pytest.raises(WebSocketDisconnect) as no_cookie:
-        with admin_client.websocket_connect(f"/ws/runs/{run['id']}"):
-            pass
+    with admin_client.websocket_connect(f"/ws/runs/{run['id']}") as ws:
+        with pytest.raises(WebSocketDisconnect) as no_cookie:
+            ws.receive_json()
     assert no_cookie.value.code == 4401
 
 

@@ -68,6 +68,7 @@ async def run_socket(websocket: WebSocket, run_id: int) -> None:
     token_hash: str | None = None
     with Session(engine) as session:
         if session.get(Run, run_id) is None:
+            await websocket.accept()
             await websocket.close(code=4404)
             return
         if token:
@@ -76,10 +77,12 @@ async def run_socket(websocket: WebSocket, run_id: int) -> None:
                 select(Participant).where(Participant.run_id == run_id, Participant.token_hash == token_hash)
             ).first()
             if p is None:
+                await websocket.accept()
                 await websocket.close(code=4401)
                 return
             participant_id = p.id
         elif not check_admin_cookie(settings, websocket.cookies.get(ADMIN_COOKIE)):
+            await websocket.accept()
             await websocket.close(code=4401)
             return
 
