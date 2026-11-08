@@ -4,6 +4,8 @@ import { adminApi } from './lib/api'
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/', component: () => import('./views/participant/JoinView.vue') },
+    { path: '/run', component: () => import('./views/participant/WorkView.vue') },
     { path: '/admin/login', component: () => import('./views/admin/LoginView.vue') },
     { path: '/admin', component: () => import('./views/admin/TemplatesView.vue'), meta: { admin: true } },
     {
@@ -17,6 +19,7 @@ export const router = createRouter({
       component: () => import('./views/admin/ResultView.vue'),
       meta: { admin: true },
     },
+    { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })
 
