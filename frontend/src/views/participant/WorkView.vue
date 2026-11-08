@@ -49,7 +49,7 @@ function leave() {
   router.push('/')
 }
 
-async function load() {
+async function load(): Promise<boolean> {
   try {
     const next = await participantApi.state()
     st.value = next
@@ -57,7 +57,7 @@ async function load() {
     if (e instanceof ApiError && (e.status === 401 || e.status === 409)) {
       if (e.status === 401) clearParticipant()
       await router.push('/')
-      return
+      return false
     }
     throw e
   }
@@ -78,6 +78,7 @@ async function load() {
     const editing = s.me.is_leader && s.boxes.find((b) => b.id === boxId)?.state === 'open' && teamFiles.value[boxId]
     if (!editing) teamFiles.value = { ...teamFiles.value, [boxId]: team.files }
   }
+  return true
 }
 
 const refreshSoon = debounce(() => {
@@ -173,14 +174,17 @@ onMounted(async () => {
     await router.push('/')
     return
   }
-  await load().catch(() => (error.value = '화면을 불러오지 못했습니다.'))
-  socket.start()
+  const ok = await load().catch(() => {
+    error.value = '화면을 불러오지 못했습니다.'
+    return true
+  })
+  if (ok) socket.start()
 })
 
 onBeforeUnmount(() => {
-  socket?.stop()
   refreshSoon.cancel()
   sendTeamDraft.flush()
+  socket?.stop()
 })
 </script>
 

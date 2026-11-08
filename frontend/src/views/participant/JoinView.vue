@@ -22,6 +22,12 @@ async function tryEnter(): Promise<boolean> {
     return true
   } catch (e) {
     if (e instanceof ApiError && e.status === 409) pending.value = true
+    if (e instanceof ApiError && e.status === 401) {
+      stopPolling()
+      clearParticipant()
+      pending.value = false
+      error.value = '재입장이 승인되지 않았습니다. 다시 입장해 주세요.'
+    }
     return false
   }
 }

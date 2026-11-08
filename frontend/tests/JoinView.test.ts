@@ -93,4 +93,28 @@ describe('JoinView', () => {
     expect(loadParticipant()).toBeNull()
     expect(wrapper.find('form').exists()).toBe(true)
   })
+
+  it('재입장 대기 중 토큰이 거절되면 안내와 함께 입장 화면으로 돌아간다', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.spyOn(participantApi, 'join').mockResolvedValue({
+        status: 'pending',
+        token: 't',
+        participant_id: 5,
+        run_id: 2,
+      })
+      vi.spyOn(participantApi, 'state').mockRejectedValue(new ApiError(401, '인증 실패'))
+      const { wrapper } = await mountAt('/')
+      await fillAndSubmit(wrapper, 'K7P2Q9')
+      expect(wrapper.text()).toContain('재입장 승인을 기다리는 중')
+      await vi.advanceTimersByTimeAsync(3000)
+      await flushPromises()
+      expect(wrapper.find('form').exists()).toBe(true)
+      expect(wrapper.find('[role=alert]').text()).toBe('재입장이 승인되지 않았습니다. 다시 입장해 주세요.')
+      expect(loadParticipant()).toBeNull()
+      wrapper.unmount()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
