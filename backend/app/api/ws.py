@@ -11,6 +11,7 @@ from sqlmodel import Session, select
 
 from app.auth import ADMIN_COOKIE, check_admin_cookie, hash_token
 from app.models import Participant, Run, utcnow
+from app.security import WS_FORBIDDEN_ORIGIN, origin_allowed
 from app.services import progress
 from app.services import runs as svc
 from app.services.views import participant_out
@@ -66,6 +67,10 @@ async def run_socket(websocket: WebSocket, run_id: int) -> None:
     token = websocket.query_params.get("token")
     participant_id: int | None = None
     token_hash: str | None = None
+    if not origin_allowed(settings.allowed_origins, websocket.headers.get("origin")):
+        await websocket.accept()
+        await websocket.close(code=WS_FORBIDDEN_ORIGIN)
+        return
     with Session(engine) as session:
         if session.get(Run, run_id) is None:
             await websocket.accept()
