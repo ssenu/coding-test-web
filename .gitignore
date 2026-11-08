@@ -3,3 +3,9 @@ parking_overview.html
 
 # 로컬 도구 산출물
 .playwright-mcp/
+
+backend/.venv/
+backend/data/
+__pycache__/
+*.egg-info/
+.pytest_cache/
