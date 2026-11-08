@@ -73,3 +73,22 @@ async def submit(box_id: str, body: FilesIn, me: ParticipantDep, session: Sessio
     run = svc.get_run(session, me.run_id)
     sub = await progress.submit_personal(session, hub, run, me, box_id, body.files)
     return {"box_id": sub.box_id, "submitted_at": iso(sub.submitted_at)}
+
+
+class VersionIn(FilesIn):
+    final: bool = False
+
+
+@router.put("/boxes/{box_id}/draft")
+async def save_draft(box_id: str, body: FilesIn, me: ParticipantDep, session: SessionDep, hub: HubDep) -> dict:
+    run = svc.get_run(session, me.run_id)
+    draft = progress.save_team_draft(session, run, me, box_id, body.files)
+    await hub.to_participants(run.id, "team_draft", svc.draft_out(draft), exclude=me.id)
+    return svc.draft_out(draft)
+
+
+@router.post("/boxes/{box_id}/versions", status_code=201)
+async def save_version(box_id: str, body: VersionIn, me: ParticipantDep, session: SessionDep, hub: HubDep) -> dict:
+    run = svc.get_run(session, me.run_id)
+    version = await progress.save_team_version(session, hub, run, me, box_id, body.files, body.final)
+    return svc.version_summary(version)

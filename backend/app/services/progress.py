@@ -1,11 +1,19 @@
 """진행 동작: 개인 제출, 연결선 승인, 팀 편집. REST API와 웹소켓이 함께 쓴다."""
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, select
+from sqlmodel import Session, col, select
 
 from app.engine.flow import OPEN, can_approve
-from app.models import EdgeApproval, Participant, Run, Submission, iso, utcnow
-from app.services.runs import advance_run, flow_state, graph_of, require_running, state_rows
+from app.engine.graph import Box
+from app.models import EdgeApproval, Participant, Run, Submission, TeamDraft, TeamVersion, iso, utcnow
+from app.services.runs import (
+    advance_run,
+    flow_state,
+    graph_of,
+    require_running,
+    state_rows,
+    version_summary,
+)
 from app.ws.hub import Hub
 
 MAX_CODE_BYTES = 200 * 1024
@@ -106,3 +114,59 @@ async def approve_edges(
     for edge in edges:
         await hub.to_all(run.id, "edge_approved", {"edge_id": edge.id})
     await advance_run(session, hub, run)
+
+
+def _team_box_for_leader(session: Session, run: Run, me: Participant, box_id: str) -> Box:
+    require_running(run)
+    box = graph_of(run).boxes.get(box_id)
+    if box is None or box.type != "team":
+        raise HTTPException(404, "팀 박스를 찾을 수 없습니다.")
+    if not me.is_leader:
+        raise HTTPException(403, "팀장만 편집할 수 있습니다.")
+    _open_box(session, run, box_id)
+    return box
+
+
+def save_team_draft(
+    session: Session, run: Run, me: Participant, box_id: str, files: object
+) -> TeamDraft:
+    _team_box_for_leader(session, run, me, box_id)
+    draft = session.exec(
+        select(TeamDraft).where(TeamDraft.run_id == run.id, TeamDraft.box_id == box_id)
+    ).first()
+    if draft is None:
+        raise HTTPException(409, "팀 박스가 아직 준비되지 않았습니다.")
+    draft.files = check_files(files, set(draft.files))
+    draft.updated_at = utcnow()
+    me.last_active_at = draft.updated_at
+    session.add(draft)
+    session.add(me)
+    session.commit()
+    session.refresh(draft)
+    return draft
+
+
+async def save_team_version(
+    session: Session, hub: Hub, run: Run, me: Participant, box_id: str, files: object, final: bool
+) -> TeamVersion:
+    draft = save_team_draft(session, run, me, box_id, files)
+    last = session.exec(
+        select(TeamVersion)
+        .where(TeamVersion.run_id == run.id, TeamVersion.box_id == box_id)
+        .order_by(col(TeamVersion.version_no).desc())
+    ).first()
+    version = TeamVersion(
+        run_id=run.id,
+        box_id=box_id,
+        version_no=(last.version_no + 1) if last else 1,
+        files=dict(draft.files),
+        saved_at=utcnow(),
+        is_final=final,
+    )
+    session.add(version)
+    session.commit()
+    session.refresh(version)
+    await hub.to_all(run.id, "team_version_saved", version_summary(version))
+    if final:
+        await advance_run(session, hub, run)
+    return version
