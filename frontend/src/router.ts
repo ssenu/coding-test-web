@@ -3,7 +3,10 @@ import { adminApi } from './lib/api'
 
 export const router = createRouter({
   history: createWebHistory(),
-  routes: [],
+  routes: [
+    { path: '/admin/login', component: () => import('./views/admin/LoginView.vue') },
+    { path: '/admin', component: () => import('./views/admin/TemplatesView.vue'), meta: { admin: true } },
+  ],
 })
 
 router.beforeEach(async (to) => {
