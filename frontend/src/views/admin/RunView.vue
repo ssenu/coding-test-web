@@ -124,21 +124,25 @@ const approveGate = (gate: Gate) =>
 
 // ---------------------------------------------------------------- 박스 상세
 // 제출이 있는 박스만 불러오고, 응답이 늦게 와도 지금 선택한 박스일 때만 반영한다
-const loadSubmission = (boxId: string) =>
-  guard(async () => {
-    if (!state.value?.submissions[boxId]) return
+const loadSubmission = async (boxId: string) => {
+  if (!state.value?.submissions[boxId]) return
+  try {
     const loaded = await adminApi.submission(runId, boxId)
     if (selectedBoxId.value === boxId) submission.value = loaded
-  })
+  } catch (e) {
+    // 실시간 갱신이 보고 있던 오류 표시를 지우지 않도록 guard를 거치지 않는다
+    error.value = e instanceof ApiError ? e.message : '제출 코드를 불러오지 못했습니다.'
+  }
+}
 
 const selectBox = (boxId: string) => {
   selectedBoxId.value = boxId
   submission.value = null
   markdownDraft.value = state.value?.graph.boxes.find((b) => b.id === boxId)?.config.markdown ?? ''
-  return loadSubmission(boxId)
+  // 제출 코드는 아래 watch가 선택이 바뀔 때 불러온다
 }
 
-// 실시간으로 제출이 생기거나 다시 제출되면 열려 있는 상세를 다시 불러온다
+// 선택이 바뀌거나 실시간으로 제출이 생기거나 다시 제출되면 상세를 불러온다
 watch(
   () => (selectedBoxId.value ? state.value?.submissions[selectedBoxId.value]?.submitted_at : undefined),
   () => {
