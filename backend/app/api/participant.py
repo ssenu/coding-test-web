@@ -6,7 +6,8 @@ from sqlmodel import select
 
 from app.auth import hash_token, new_token
 from app.deps import HubDep, ParticipantDep, SessionDep, SettingsDep
-from app.models import Participant, Run, RunFile
+from app.models import Participant, Run, RunFile, iso
+from app.services import progress
 from app.services import runs as svc
 from app.services.views import can_see_box, participant_out, participant_state
 from app.storage import stored_path
@@ -61,3 +62,14 @@ def download(file_id: int, me: ParticipantDep, session: SessionDep, settings: Se
     if record is None or record.run_id != run.id or not can_see_box(session, run, me, record.box_id):
         raise HTTPException(404, "파일을 찾을 수 없습니다.")
     return FileResponse(stored_path(settings.files_dir, record.stored_path), filename=record.filename)
+
+
+class FilesIn(BaseModel):
+    files: dict[str, str]
+
+
+@router.post("/boxes/{box_id}/submit")
+async def submit(box_id: str, body: FilesIn, me: ParticipantDep, session: SessionDep, hub: HubDep) -> dict:
+    run = svc.get_run(session, me.run_id)
+    sub = await progress.submit_personal(session, hub, run, me, box_id, body.files)
+    return {"box_id": sub.box_id, "submitted_at": iso(sub.submitted_at)}

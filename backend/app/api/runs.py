@@ -20,6 +20,7 @@ from app.models import (
     iso,
     utcnow,
 )
+from app.services import progress
 from app.services import runs as svc
 from app.services.views import admin_state, participant_out, run_summary
 from app.storage import copy_stored, stored_path
@@ -249,3 +250,15 @@ def download_run_file(run_id: int, file_id: int, session: SessionDep, settings: 
     if record is None or record.run_id != run_id:
         raise HTTPException(404, "파일을 찾을 수 없습니다.")
     return FileResponse(stored_path(settings.files_dir, record.stored_path), filename=record.filename)
+
+
+class ApprovalIn(BaseModel):
+    edge_ids: list[str] = Field(min_length=1)
+    confirm: bool = False
+
+
+@router.post("/runs/{run_id}/approvals")
+async def approve(run_id: int, body: ApprovalIn, session: SessionDep, hub: HubDep) -> dict:
+    run = svc.get_run(session, run_id)
+    await progress.approve_edges(session, hub, run, body.edge_ids, body.confirm)
+    return admin_state(session, run, hub.online(run.id))
