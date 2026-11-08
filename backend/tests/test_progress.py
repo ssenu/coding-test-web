@@ -86,3 +86,12 @@ def test_my_submission_in_state(admin_client):
     assert view["my_submission"]["files"] == {"a_entry.py": "A"}
     other = admin_client.get("/api/p/state", headers=tok(ctx["tokens"]["b"])).json()
     assert other["my_submission"] is None
+
+
+def test_duplicate_edge_ids_are_idempotent(admin_client):
+    ctx = started_parking_run(admin_client)
+    run_id = ctx["run"]["id"]
+    body = {"edge_ids": ["a-team", "a-team"], "confirm": True}
+    r = admin_client.post(f"/api/runs/{run_id}/approvals", json=body)
+    assert r.status_code == 200, r.text
+    assert r.json()["approved_edges"] == ["a-team"]

@@ -1,5 +1,6 @@
 """진행 동작: 개인 제출, 연결선 승인, 팀 편집. REST API와 웹소켓이 함께 쓴다."""
 from fastapi import HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.engine.flow import OPEN, can_approve
@@ -70,7 +71,7 @@ async def approve_edges(
     graph = graph_of(run)
     fs = flow_state(session, run)
     edges = []
-    for edge_id in edge_ids:
+    for edge_id in dict.fromkeys(edge_ids):
         edge = graph.edge(edge_id)
         if edge is None or edge.mode != "approval":
             raise HTTPException(404, f"승인 연결선이 아닙니다: {edge_id}")
@@ -79,10 +80,10 @@ async def approve_edges(
         if not can_approve(edge, fs.states):
             raise HTTPException(409, f"아직 승인할 수 없는 연결선입니다: {edge_id}")
         edges.append(edge)
-    unsubmitted = [
+    unsubmitted = list(dict.fromkeys(
         e.source for e in edges
         if graph.boxes[e.source].type == "personal" and e.source not in fs.submitted
-    ]
+    ))
     if unsubmitted and not confirm:
         raise HTTPException(
             409,
@@ -95,7 +96,13 @@ async def approve_edges(
     now = utcnow()
     for edge in edges:
         session.add(EdgeApproval(run_id=run.id, edge_id=edge.id, approved_at=now))
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        # 동시 요청이 먼저 같은 연결선을 승인했다: 이미 반영된 상태이므로 이벤트 없이 진행만 맞춘다.
+        session.rollback()
+        await advance_run(session, hub, run)
+        return
     for edge in edges:
         await hub.to_all(run.id, "edge_approved", {"edge_id": edge.id})
     await advance_run(session, hub, run)
