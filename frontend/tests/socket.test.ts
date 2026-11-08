@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { RunSocket, type SocketHandlers, reconnectDelay, runSocketUrl } from '../src/lib/socket'
+import { PING_INTERVAL_MS, RunSocket, type SocketHandlers, reconnectDelay, runSocketUrl } from '../src/lib/socket'
 
 class FakeSocket {
   static instances: FakeSocket[] = []
@@ -118,6 +118,30 @@ describe('RunSocket', () => {
     ws.serverClose(1006)
     vi.advanceTimersByTime(60_000)
     expect(FakeSocket.instances).toHaveLength(1)
+  })
+
+  it('연결되면 주기적으로 ping을 보내고 stop() 뒤에는 멈춘다', () => {
+    const { socket } = make()
+    socket.start()
+    const ws = FakeSocket.instances[0]!
+    ws.open()
+    vi.advanceTimersByTime(PING_INTERVAL_MS)
+    expect(ws.sent).toEqual(['{"type":"ping"}'])
+    socket.stop()
+    vi.advanceTimersByTime(PING_INTERVAL_MS * 3)
+    expect(ws.sent).toHaveLength(1)
+  })
+
+  it('이벤트 처리기의 오류는 삼키지 않는다', () => {
+    const { socket } = make({
+      onEvent: () => {
+        throw new Error('boom')
+      },
+    })
+    socket.start()
+    const ws = FakeSocket.instances[0]!
+    ws.open()
+    expect(() => ws.onmessage?.({ data: '{"event":"x","data":{}}' })).toThrow()
   })
 
   it('재접속 간격은 10초를 넘지 않는다', () => {

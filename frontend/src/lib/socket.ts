@@ -15,6 +15,7 @@ export interface SocketHandlers {
 type WebSocketCtor = new (url: string) => WebSocket
 
 export const AUTH_FAIL_CODES = [4401, 4404]
+export const PING_INTERVAL_MS = 25_000
 const BASE_DELAY_MS = 500
 const MAX_DELAY_MS = 10_000
 
@@ -32,6 +33,7 @@ export class RunSocket {
   private ws: WebSocket | null = null
   private attempt = 0
   private timer: ReturnType<typeof setTimeout> | null = null
+  private pingTimer: ReturnType<typeof setInterval> | null = null
   private stopped = false
   private readonly url: string
   private readonly handlers: SocketHandlers
@@ -52,6 +54,7 @@ export class RunSocket {
     this.stopped = true
     if (this.timer) clearTimeout(this.timer)
     this.timer = null
+    this.stopPing()
     this.ws?.close()
     this.ws = null
   }
@@ -62,23 +65,35 @@ export class RunSocket {
     return true
   }
 
+  private stopPing(): void {
+    if (this.pingTimer) clearInterval(this.pingTimer)
+    this.pingTimer = null
+  }
+
   private connect(): void {
     const ws = new this.Impl(this.url)
     this.ws = ws
     ws.onopen = () => {
       this.attempt = 0
+      this.stopPing()
+      this.pingTimer = setInterval(() => this.send({ type: 'ping' }), PING_INTERVAL_MS)
       this.handlers.onOpen?.()
     }
     ws.onmessage = (msg: MessageEvent) => {
+      let parsed: ServerEvent
       try {
-        const parsed = JSON.parse(String(msg.data)) as ServerEvent
-        if (parsed && typeof parsed.event === 'string') this.handlers.onEvent(parsed)
+        parsed = JSON.parse(String(msg.data)) as ServerEvent
+        if (!parsed || typeof parsed.event !== 'string') return
       } catch {
         // 형식이 맞지 않는 메시지는 무시한다
+        return
       }
+      // 처리기 오류는 삼키지 않고 밖으로 드러낸다
+      this.handlers.onEvent(parsed)
     }
     ws.onclose = (ev: CloseEvent) => {
       if (this.ws !== ws || this.stopped) return
+      this.stopPing()
       this.ws = null
       if (AUTH_FAIL_CODES.includes(ev.code)) {
         this.handlers.onAuthFailed?.(ev.code)
