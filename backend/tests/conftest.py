@@ -19,3 +19,10 @@ def app(settings):
 def client(app):
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def admin_client(client):
+    r = client.post("/api/admin/login", json={"password": "pw"})
+    assert r.status_code == 200, r.text
+    return client
