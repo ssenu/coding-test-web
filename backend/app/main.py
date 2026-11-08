@@ -5,6 +5,7 @@ from app.api import admin, participant, runs, templates, ws
 from app.config import Settings, load_settings
 from app.db import init_db, make_engine
 from app.ratelimit import RateLimiter
+from app.web import mount_web
 from app.ws.hub import Hub
 
 
@@ -26,5 +27,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/api/health")
     def health() -> dict:
         return {"ok": True}
+
+    if settings.web_dist is not None:
+        mount_web(app, settings.web_dist)  # 모든 경로를 받으므로 맨 마지막에
 
     return app

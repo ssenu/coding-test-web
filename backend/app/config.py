@@ -10,6 +10,8 @@ class Settings:
     secret_key: str
     data_dir: Path
     cookie_secure: bool = False
+    web_dist: Path | None = None
+    allowed_origins: tuple[str, ...] = ()
 
     @property
     def db_url(self) -> str:
@@ -30,4 +32,8 @@ def load_settings() -> Settings:
         secret_key=secret,
         data_dir=Path(os.environ.get("DATA_DIR", "/data")),
         cookie_secure=os.environ.get("COOKIE_SECURE", "0") == "1",
+        web_dist=Path(os.environ["WEB_DIST"]) if os.environ.get("WEB_DIST") else None,
+        allowed_origins=tuple(
+            o.strip().rstrip("/") for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()
+        ),
     )
