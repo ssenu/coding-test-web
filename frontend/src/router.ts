@@ -11,6 +11,12 @@ export const router = createRouter({
       component: () => import('./views/admin/EditorView.vue'),
       meta: { admin: true },
     },
+    { path: '/admin/runs/:id', component: () => import('./views/admin/RunView.vue'), meta: { admin: true } },
+    {
+      path: '/admin/runs/:id/result',
+      component: () => import('./views/admin/ResultView.vue'),
+      meta: { admin: true },
+    },
   ],
 })
 
