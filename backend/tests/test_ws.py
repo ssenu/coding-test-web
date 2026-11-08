@@ -2,7 +2,7 @@ import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from app.auth import ADMIN_COOKIE
-from tests.helpers import approve_all, open_run, started_parking_run, submit
+from tests.helpers import approve_all, assign, join, open_run, started_parking_run, submit
 
 
 def admin_ws(client, run_id: int):
@@ -92,3 +92,18 @@ def test_leader_draft_reaches_members(admin_client):
             not_leader.send_json({"type": "team_draft", "box_id": "team", "files": files})
             error = receive_until(not_leader, "error")
             assert error["detail"] == "팀장만 편집할 수 있습니다."
+
+
+def test_assignment_change_only_gives_participants_assignment_info(admin_client):
+    run = open_run(admin_client)
+    joined = join(admin_client, run["entry_code"], "가")
+    pid = joined["participant_id"]
+    with admin_ws(admin_client, run["id"]) as admin:
+        with participant_ws(admin_client, run["id"], joined["token"]) as p:
+            receive_until(admin, "participant_updated")  # 입장(접속) 알림
+            assign(admin_client, run["id"], pid, "a", leader=True)
+            got = receive_until(p, "assignment_updated")
+            assert set(got) == {"id", "name", "assigned_box_id", "is_leader"}
+            assert (got["id"], got["assigned_box_id"], got["is_leader"]) == (pid, "a", True)
+            full = receive_until(admin, "participant_updated")
+            assert "typing" in full and full["assigned_box_id"] == "a"

@@ -52,7 +52,12 @@ def _participant(session: Session, run: Run, participant_id: int) -> Participant
 async def _broadcast_participants(session: Session, hub: Hub, run: Run) -> None:
     online = hub.online(run.id)
     for p in session.exec(select(Participant).where(Participant.run_id == run.id)).all():
-        await hub.to_all(run.id, "participant_updated", participant_out(p, online))
+        await hub.to_admins(run.id, "participant_updated", participant_out(p, online))
+        await hub.to_participants(
+            run.id,
+            "assignment_updated",
+            {"id": p.id, "name": p.name, "assigned_box_id": p.assigned_box_id, "is_leader": p.is_leader},
+        )
 
 
 @router.post("/templates/{template_id}/runs", status_code=201)
