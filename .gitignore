@@ -9,3 +9,6 @@ backend/data/
 __pycache__/
 *.egg-info/
 .pytest_cache/
+
+frontend/node_modules/
+frontend/dist/
