@@ -110,7 +110,10 @@ const socket = stored
 
 const sendTyping = throttle(() => socket?.send({ type: 'typing' }), TYPING_INTERVAL_MS)
 const sendTeamDraft = debounce((boxId: string, files: Files) => {
-  socket?.send({ type: 'team_draft', box_id: boxId, files })
+  // 연결이 끊겨 있으면 REST로 초안을 저장한다
+  if (!socket?.send({ type: 'team_draft', box_id: boxId, files })) {
+    participantApi.saveDraft(boxId, files).catch(() => undefined)
+  }
 }, TEAM_DRAFT_DELAY_MS)
 
 // ---------------------------------------------------------------- 개인 박스
