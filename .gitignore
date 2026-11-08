@@ -12,3 +12,8 @@ __pycache__/
 
 frontend/node_modules/
 frontend/dist/
+
+# 배포 비밀값과 서버 전용 설정
+.env
+docker-compose.override.yml
+!.env.example
