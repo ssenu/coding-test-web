@@ -72,12 +72,31 @@ class Graph:
         return seen
 
 
+def _config(raw_box: dict) -> dict:
+    config = raw_box.get("config")
+    if config is None:
+        return {}
+    if not isinstance(config, dict):
+        raise GraphError(f"박스 {raw_box.get('id')}의 config는 객체여야 합니다.")
+    return config
+
+
+def _editor(raw_box: dict) -> dict:
+    editor = _config(raw_box).get("editor")
+    if editor is None:
+        return {}
+    if not isinstance(editor, dict):
+        raise GraphError(f"박스 {raw_box.get('id')}의 editor는 객체여야 합니다.")
+    return editor
+
+
 def _parse_files(raw_box: dict) -> tuple[EditorFile, ...]:
-    config = raw_box.get("config") or {}
-    editor = config.get("editor") or {}
+    raw_files = _editor(raw_box).get("files", [])
+    if not isinstance(raw_files, list):
+        raise GraphError(f"박스 {raw_box.get('id')}의 files는 목록이어야 합니다.")
     files: list[EditorFile] = []
     names: set[str] = set()
-    for raw in editor.get("files", []):
+    for raw in raw_files:
         name = str(raw.get("name", "")).strip() if isinstance(raw, dict) else ""
         if not name:
             raise GraphError(f"박스 {raw_box.get('id')}의 코드 파일에 이름이 없습니다.")
@@ -93,7 +112,10 @@ def parse_graph(data: dict) -> Graph:
     if not isinstance(data, dict):
         raise GraphError("그래프는 객체여야 합니다.")
     boxes: dict[str, Box] = {}
-    for raw in data.get("boxes", []):
+    raw_boxes = data.get("boxes", [])
+    if not isinstance(raw_boxes, list):
+        raise GraphError("boxes는 목록이어야 합니다.")
+    for raw in raw_boxes:
         if not isinstance(raw, dict) or "id" not in raw or "type" not in raw:
             raise GraphError("박스에 id와 type이 필요합니다.")
         box_id, box_type = str(raw["id"]), raw["type"]
@@ -101,7 +123,7 @@ def parse_graph(data: dict) -> Graph:
             raise GraphError(f"알 수 없는 박스 종류입니다: {box_type}")
         if box_id in boxes:
             raise GraphError(f"박스 id가 겹칩니다: {box_id}")
-        config = raw.get("config") or {}
+        config = _config(raw)
         boxes[box_id] = Box(
             id=box_id,
             type=box_type,
@@ -112,7 +134,10 @@ def parse_graph(data: dict) -> Graph:
         )
     edges: list[Edge] = []
     edge_ids: set[str] = set()
-    for raw in data.get("edges", []):
+    raw_edges = data.get("edges", [])
+    if not isinstance(raw_edges, list):
+        raise GraphError("edges는 목록이어야 합니다.")
+    for raw in raw_edges:
         if not isinstance(raw, dict) or not {"id", "source", "target"} <= raw.keys():
             raise GraphError("연결선에 id, source, target이 필요합니다.")
         edge = Edge(

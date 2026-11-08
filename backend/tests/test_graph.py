@@ -29,6 +29,12 @@ def test_parking_graph_is_valid():
         {"boxes": [box("x", "common", "1"), box("y", "result", "2")],
          "edges": [{"id": "e", "source": "x", "target": "y", "mode": "later"}]},
         {"boxes": [box("p", "personal", "p", ("a.py", "a.py"))]},
+        {"boxes": None},
+        {"boxes": "ab"},
+        {"boxes": [], "edges": None},
+        {"boxes": [dict(box("x", "common", "1"), config="x")]},
+        {"boxes": [dict(box("x", "common", "1"), config={"editor": []})]},
+        {"boxes": [dict(box("p", "personal", "p"), config={"editor": {"files": "a.py"}})]},
     ],
 )
 def test_parse_rejects_malformed(data):
