@@ -1,3 +1,4 @@
+import { EditorView } from '@codemirror/view'
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
@@ -24,6 +25,15 @@ describe('FileTabs', () => {
     await nextTick()
     expect(wrapper.find('.cm-content').text()).toContain('new')
     expect(wrapper.find('.cm-content').attributes('contenteditable')).toBe('false')
+    expect(wrapper.emitted('update:files')).toBeUndefined()
+  })
+
+  it('사용자가 편집하면 합쳐진 파일 묶음을 내보낸다', async () => {
+    const wrapper = mount(FileTabs, { props: { files: { 'a.py': 'A = 1', 'b.py': 'B = 2' } } })
+    const view = EditorView.findFromDOM(wrapper.find('.cm-editor').element as HTMLElement)!
+    view.dispatch({ changes: { from: view.state.doc.length, insert: '0' } })
+    const emitted = wrapper.emitted('update:files')!
+    expect(emitted[emitted.length - 1]![0]).toEqual({ 'a.py': 'A = 10', 'b.py': 'B = 2' })
   })
 
   it('파일이 없으면 안내 문구를 보여 준다', () => {
