@@ -85,18 +85,21 @@ onBeforeUnmount(stopPolling)
 <template>
   <main class="center-page">
     <div v-if="pending" class="card narrow" role="status">
+      <div class="waiting-mark" aria-hidden="true"><i /><i /><i /></div>
       <h1>재입장 승인을 기다리는 중</h1>
       <p>같은 이름으로 이미 입장한 기록이 있습니다. 관리자가 승인하면 자동으로 들어갑니다.</p>
     </div>
     <form v-else class="card narrow" @submit.prevent="submit">
+      <div class="brand-mark" aria-hidden="true"><i /><i /><i /><i /></div>
       <h1>코딩테스트 입장</h1>
+      <p class="lead">관리자에게 받은 입장 코드와 이름을 입력하세요.</p>
       <label>
         입장 코드
-        <input v-model="entryCode" required maxlength="12" autocomplete="off" class="code-input" />
+        <input v-model="entryCode" required maxlength="12" autocomplete="off" class="code-input" placeholder="······" spellcheck="false" />
       </label>
       <label>
         이름
-        <input v-model="name" required maxlength="30" autocomplete="name" />
+        <input v-model="name" required maxlength="30" autocomplete="name" placeholder="홍길동" />
       </label>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <button class="primary" type="submit" :disabled="busy">입장하기</button>

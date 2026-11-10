@@ -2,6 +2,7 @@
 // 결과 보기: 팀 박스별 저장 버전 목록과 선택한 버전의 파일.
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import AppIcon from '../../components/AppIcon.vue'
 import FileTabs from '../../components/FileTabs.vue'
 import { ApiError, adminApi } from '../../lib/api'
 import type { AdminState, Files, VersionSummary } from '../../lib/types'
@@ -37,33 +38,41 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="page">
-    <header class="page-head">
-      <RouterLink :to="`/admin/runs/${runId}`">← 진행 화면</RouterLink>
+  <main class="result-page">
+    <header class="topbar">
+      <RouterLink :to="`/admin/runs/${runId}`" class="button quiet back" aria-label="진행 화면으로">
+        <AppIcon name="arrow-left" />
+      </RouterLink>
       <h1>{{ state?.run.name ?? '결과' }}</h1>
+      <span class="tag">결과</span>
     </header>
-    <p v-if="error" class="error" role="alert">{{ error }}</p>
+    <p v-if="error" class="banner error" role="alert"><AppIcon name="alert" />{{ error }}</p>
     <div class="result-grid">
-      <aside>
+      <aside aria-label="버전">
         <section v-for="box in teamBoxes" :key="box.id">
-          <h2>{{ box.title }}</h2>
+          <h3 style="margin-top: 0">{{ box.title }}</h3>
           <p v-if="!state?.team_versions[box.id]?.length" class="muted">아직 저장한 버전이 없습니다.</p>
           <ul class="version-list">
             <li v-for="v in state?.team_versions[box.id] ?? []" :key="v.id">
               <button type="button" :class="{ active: selected?.id === v.id }" @click="open(v)">
                 버전 {{ v.version_no }}
                 <span v-if="v.is_final" class="tag ok">최종</span>
-                <span class="muted">{{ new Date(v.saved_at).toLocaleTimeString('ko-KR') }}</span>
+                <span class="muted">{{ new Date(v.saved_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) }}</span>
               </button>
             </li>
           </ul>
         </section>
       </aside>
       <section v-if="selected">
-        <h2>버전 {{ selected.version_no }}<span v-if="selected.is_final"> (최종 제출)</span></h2>
+        <h2>버전 {{ selected.version_no }}<span v-if="selected.is_final"> · 최종 제출</span></h2>
         <FileTabs :files="selected.files" readonly />
       </section>
-      <p v-else class="muted">왼쪽에서 버전을 고르세요.</p>
+      <section v-else>
+        <div class="empty-state">
+          <h2>볼 버전이 없습니다</h2>
+          <p>팀장이 버전을 저장하거나 최종 제출하면 여기서 코드를 볼 수 있습니다.</p>
+        </div>
+      </section>
     </div>
   </main>
 </template>

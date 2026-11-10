@@ -27,7 +27,9 @@ async function submit() {
 <template>
   <main class="center-page">
     <form class="card narrow" @submit.prevent="submit">
+      <div class="brand-mark" aria-hidden="true"><i /><i /><i /><i /></div>
       <h1>관리자 로그인</h1>
+      <p class="lead">시험장을 만들고 회차를 진행합니다.</p>
       <label>
         비밀번호
         <input v-model="password" type="password" autocomplete="current-password" required autofocus />

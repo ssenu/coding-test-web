@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assignmentWarnings, boxBadges, boxStates, pendingGates } from '../src/lib/run'
+import { assignmentWarnings, boxBadges, boxStates, isTyping, pendingGates, teamsWithoutFinal } from '../src/lib/run'
 import type { ParticipantInfo } from '../src/lib/types'
 import { adminState } from './fixtures'
 
@@ -58,5 +58,24 @@ describe('boxBadges / boxStates', () => {
     })
     expect(boxBadges(state)).toEqual({ a: '가 · 제출', b: '미배정 · 미제출', team: '버전 1개' })
     expect(boxStates(state).a).toBe('open')
+  })
+})
+
+describe('teamsWithoutFinal', () => {
+  it('최종 제출이 없는 팀 박스에서 나가는 승인이면 그 제목을 돌려준다', () => {
+    const state = adminState()
+    const gate = { target: 'result', targetTitle: '결과', edgeIds: ['team-result'], unsubmitted: [] }
+    expect(teamsWithoutFinal(state, gate)).toEqual(['통합'])
+    state.team_versions.team = [{ id: 1, box_id: 'team', version_no: 1, saved_at: 'x', is_final: true }]
+    expect(teamsWithoutFinal(state, gate)).toEqual([])
+  })
+})
+
+describe('isTyping', () => {
+  it('최근 60초 안에 입력 신호가 있었을 때만 참이다', () => {
+    const now = Date.parse('2026-11-10T03:00:00Z')
+    expect(isTyping({ last_active_at: '2026-11-10T02:59:30Z' }, now)).toBe(true)
+    expect(isTyping({ last_active_at: '2026-11-10T02:58:00Z' }, now)).toBe(false)
+    expect(isTyping({ last_active_at: null }, now)).toBe(false)
   })
 })

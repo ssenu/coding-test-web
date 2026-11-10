@@ -1,0 +1,2 @@
+Pretendard (c) Kil Hyung-jin, JetBrains Mono (c) JetBrains.
+Both are licensed under the SIL Open Font License 1.1: https://openfontlicense.org

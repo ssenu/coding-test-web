@@ -10,6 +10,8 @@ export interface SocketHandlers {
   onEvent: (event: ServerEvent) => void
   onOpen?: () => void
   onAuthFailed?: (code: number) => void
+  /** 연결이 붙거나 끊길 때마다 알린다(화면의 연결 상태 표시용). */
+  onStatus?: (connected: boolean) => void
 }
 
 type WebSocketCtor = new (url: string) => WebSocket
@@ -77,6 +79,7 @@ export class RunSocket {
       this.attempt = 0
       this.stopPing()
       this.pingTimer = setInterval(() => this.send({ type: 'ping' }), PING_INTERVAL_MS)
+      this.handlers.onStatus?.(true)
       this.handlers.onOpen?.()
     }
     ws.onmessage = (msg: MessageEvent) => {
@@ -97,6 +100,7 @@ export class RunSocket {
       if (this.ws !== ws || this.stopped) return
       this.stopPing()
       this.ws = null
+      this.handlers.onStatus?.(false)
       if (AUTH_FAIL_CODES.includes(ev.code)) {
         this.handlers.onAuthFailed?.(ev.code)
         return

@@ -29,6 +29,18 @@ export function pendingGates(state: AdminState): Gate[] {
   return [...gates.values()]
 }
 
+/** 이 승인으로 넘어가는 팀 박스 중 아직 최종 제출이 없는 것의 제목. 서버는 이 경우를 따로 묻지 않으므로 화면에서 확인한다. */
+export function teamsWithoutFinal(state: AdminState, gate: Gate): string[] {
+  const titles: string[] = []
+  for (const edge of state.graph.edges) {
+    if (!gate.edgeIds.includes(edge.id)) continue
+    const source = state.graph.boxes.find((b) => b.id === edge.source)
+    if (source?.type !== 'team') continue
+    if (!(state.team_versions[source.id] ?? []).some((v) => v.is_final)) titles.push(source.title)
+  }
+  return titles
+}
+
 /** 관리자에게 보여 줄 배정 관련 경고. */
 export function assignmentWarnings(state: AdminState): string[] {
   const personal = state.graph.boxes.filter((b) => b.type === 'personal')
@@ -63,6 +75,20 @@ export function boxBadges(state: AdminState): Record<string, string> {
     }
   }
   return badges
+}
+
+export const TYPING_WINDOW_MS = 60_000
+
+/** 최근 입력 신호가 있었는지. 서버가 준 typing 값은 이벤트 시점 기준이라 화면의 시계로 다시 계산한다. */
+export function isTyping(p: { last_active_at: string | null }, now: number): boolean {
+  if (!p.last_active_at) return false
+  return now - new Date(p.last_active_at).getTime() < TYPING_WINDOW_MS
+}
+
+/** 개인 박스 중 제출된 수와 전체 수. */
+export function submitProgress(state: AdminState): { done: number; total: number } {
+  const personal = state.graph.boxes.filter((b) => b.type === 'personal')
+  return { done: personal.filter((b) => state.submissions[b.id]).length, total: personal.length }
 }
 
 export function boxStates(state: AdminState): Record<string, BoxState> {
